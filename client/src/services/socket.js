@@ -38,6 +38,8 @@ class SocketService {
 
       this.socket.on('connect_error', (error) => {
         console.warn('Socket.io connection error (Normal if backend offline):', error.message);
+        // Force disconnect to prevent endless polling and red console spam when offline
+        this.socket.disconnect();
       });
 
       this.socket.on('disconnect', (reason) => {
