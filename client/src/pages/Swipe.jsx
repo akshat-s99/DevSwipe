@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import api from '../services/api';
 
 /**
- * Swipe Page Component (Task 11.1)
- * Fetches other developers' profiles, presents them in a card layout,
- * and handles loading and empty states when no profiles are available.
+ * Swipe Page Component (Task 11.3)
+ * Fetches developer profiles, handles like/pass operations,
+ * and launches a modal match celebration overlay when a mutual match is formed.
  */
 const Swipe = () => {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   // 1. Profile and loading states
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [noMoreProfiles, setNoMoreProfiles] = useState(false);
+
+  // 2. Swipe action states
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchDetails, setMatchDetails] = useState(null);
 
   /**
    * Fetches the next swipeable developer profile from the backend.
@@ -26,8 +32,6 @@ const Swipe = () => {
     try {
       const response = await api.get('/swipe/next');
       
-      // The API contract returns a message when no profiles remain:
-      // { message: "No more profiles available" }
       if (response.data && response.data.message) {
         setProfile(null);
         setNoMoreProfiles(true);
@@ -35,18 +39,62 @@ const Swipe = () => {
         setProfile(response.data);
         setNoMoreProfiles(false);
       } else {
-        // Fallback for unexpected format
         setProfile(null);
         setNoMoreProfiles(true);
       }
     } catch (err) {
-      // If we get an error response (like a 404 not found or generic server error),
-      // we log it and display the error message.
       console.error('Error fetching next profile:', err);
       setError(err.response?.data?.error || 'Failed to load profiles. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Handles a swipe action (like or pass).
+   * Disables buttons during API communication, sends POST payloads,
+   * and triggers match displays or next card fetches based on results.
+   */
+  const handleSwipe = async (action) => {
+    if (!profile || isSwiping) return;
+
+    setIsSwiping(true);
+    try {
+      // Send POST swipe action containing target user ID and action
+      const response = await api.post('/swipe', {
+        swipedUserId: profile.userId,
+        action
+      });
+
+      const { match, matchedUser, matchId } = response.data;
+
+      if (match) {
+        // If match occurs, populate match details and toggle the overlay modal
+        setMatchDetails({
+          matchId,
+          matchedUser
+        });
+        setShowMatchModal(true);
+      } else {
+        // If not a match, immediately load the next profile card
+        await fetchNextProfile();
+      }
+    } catch (err) {
+      console.error('Error recording swipe:', err);
+      // Even on swipe recording failure, let the user move to the next profile
+      await fetchNextProfile();
+    } finally {
+      setIsSwiping(false);
+    }
+  };
+
+  /**
+   * Closes the match modal popup and proceeds to load the next swipe card.
+   */
+  const handleCloseMatchModal = () => {
+    setShowMatchModal(false);
+    setMatchDetails(null);
+    fetchNextProfile();
   };
 
   // Fetch the first profile upon component mounting
@@ -88,7 +136,7 @@ const Swipe = () => {
   }
 
   // 1. Loading state view
-  if (isLoading) {
+  if (isLoading && !showMatchModal) {
     return (
       <div className="container py-5 my-5 text-center">
         <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
@@ -100,7 +148,7 @@ const Swipe = () => {
   }
 
   // 2. Error state view
-  if (error) {
+  if (error && !showMatchModal) {
     return (
       <div className="container py-5 my-5 text-center">
         <div className="glass-panel p-5 d-inline-block" style={{ maxWidth: '500px' }}>
@@ -120,7 +168,7 @@ const Swipe = () => {
   }
 
   // 3. Empty state view: No more profiles to swipe on
-  if (noMoreProfiles || !profile) {
+  if ((noMoreProfiles || !profile) && !showMatchModal) {
     return (
       <div className="container py-5 my-5 text-center">
         <div className="glass-panel p-5 d-inline-block" style={{ maxWidth: '500px' }}>
@@ -146,14 +194,101 @@ const Swipe = () => {
 
   // 4. Main Profile Card View
   return (
-    <div className="container my-5 py-2">
+    <div className="container my-5 py-2 position-relative">
+      
+      {/* 5. MATCH MODAL OVERLAY CELEBRATION */}
+      {showMatchModal && matchDetails && (
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+          style={{
+            zIndex: 1050,
+            backgroundColor: 'rgba(7, 9, 19, 0.95)',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.5s ease-in-out'
+          }}>
+          
+          <div className="glass-panel p-5 text-center max-width-match-box" style={{ maxWidth: '480px', border: '1.5px solid rgba(236, 72, 153, 0.3)' }}>
+            <h1 className="display-5 fw-extrabold text-transparent bg-clip-text mb-2" style={{
+              backgroundImage: 'linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontFamily: 'Outfit'
+            }}>
+              It's a Match!
+            </h1>
+            <p className="text-secondary mb-5">You and <strong>{matchDetails.matchedUser.name}</strong> liked each other's code stack.</p>
+
+            {/* Avatar matches comparison layout */}
+            <div className="d-flex align-items-center justify-content-center gap-4 mb-5">
+              
+              {/* Logged in User Avatar */}
+              <div className="position-relative">
+                <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-lg" 
+                  style={{
+                    width: '90px',
+                    height: '90px',
+                    background: 'var(--primary-gradient)',
+                    border: '3px solid rgba(255, 255, 255, 0.15)',
+                    fontSize: '2rem'
+                  }}>
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <span className="position-absolute bottom-0 end-0 badge bg-primary px-2 py-1 rounded-pill small">YOU</span>
+              </div>
+
+              {/* Heart pulse symbol */}
+              <div className="pulse-animation d-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-20 border border-danger text-danger" style={{ width: '50px', height: '50px' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" className="bi bi-heart-fill" viewBox="0 0 16 16">
+                  <path fillRule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314"/>
+                </svg>
+              </div>
+
+              {/* Matched Developer Avatar */}
+              <div className="position-relative">
+                <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-lg" 
+                  style={{
+                    width: '90px',
+                    height: '90px',
+                    background: 'var(--secondary-gradient)',
+                    border: '3px solid rgba(255, 255, 255, 0.15)',
+                    fontSize: '2rem'
+                  }}>
+                  {matchDetails.matchedUser.name ? matchDetails.matchedUser.name.charAt(0).toUpperCase() : 'D'}
+                </div>
+                <span className="position-absolute bottom-0 end-0 badge bg-danger px-2 py-1 rounded-pill small">DEV</span>
+              </div>
+
+            </div>
+
+            {/* Actions for matching celebration */}
+            <div className="d-flex flex-column gap-3">
+              <button 
+                type="button" 
+                className="btn btn-secondary-gradient py-3 rounded-3 fw-bold"
+                onClick={() => navigate('/messages')}
+              >
+                Send Message
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary py-3 rounded-3 text-white fw-semibold"
+                onClick={handleCloseMatchModal}
+                style={{ border: '1px solid var(--surface-border)' }}
+              >
+                Keep Swiping
+              </button>
+            </div>
+
+          </div>
+          
+        </div>
+      )}
+
+      {/* Main card */}
       <div className="row justify-content-center">
         <div className="col-md-8 col-lg-6 col-xl-5">
           
-          {/* Main Swipeable Profile Card */}
           <div className="glass-panel overflow-hidden border-secondary" style={{ borderRadius: '24px' }}>
             
-            {/* Developer Card Header Decor */}
             <div className="p-4 bg-dark bg-opacity-25 border-bottom border-secondary d-flex justify-content-between align-items-center">
               <span className="small text-secondary fw-semibold">DEV MATCHING</span>
               <span className="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-1 small">
@@ -161,10 +296,8 @@ const Swipe = () => {
               </span>
             </div>
 
-            {/* Profile Content */}
             <div className="p-4 p-md-5">
               
-              {/* Profile Name & Initial Avatar */}
               <div className="d-flex align-items-center mb-4">
                 <div className="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center text-white fw-bold fs-2 shadow-lg" 
                   style={{
@@ -193,7 +326,6 @@ const Swipe = () => {
                 </div>
               </div>
 
-              {/* Developer Bio */}
               <div className="mb-4">
                 <h5 className="text-secondary small fw-bold text-uppercase mb-2">About Me</h5>
                 <p className="text-light leading-relaxed" style={{ fontSize: '1.025rem' }}>
@@ -201,7 +333,6 @@ const Swipe = () => {
                 </p>
               </div>
 
-              {/* Developer Tech Stack tags */}
               <div className="mb-5">
                 <h5 className="text-secondary small fw-bold text-uppercase mb-2">Tech Stack</h5>
                 <div className="d-flex flex-wrap m-n1" style={{ minHeight: '30px' }}>
@@ -217,14 +348,15 @@ const Swipe = () => {
                 </div>
               </div>
 
-              {/* Swipe Action Buttons Placeholders (Task 11.3 implementation target) */}
+              {/* Swipe Action Buttons wired with click triggers and disabled states */}
               <div className="d-flex justify-content-center align-items-center gap-4 mt-3 border-top border-secondary pt-4">
                 <button
                   type="button"
-                  className="btn btn-outline-danger d-flex align-items-center justify-content-center shadow-sm rounded-circle"
-                  style={{ width: '60px', height: '60px', border: '1px solid rgba(220, 53, 69, 0.3)' }}
+                  className="btn btn-outline-danger d-flex align-items-center justify-content-center shadow-sm rounded-circle swipe-btn"
+                  style={{ width: '60px', height: '60px', border: '1px solid rgba(220, 53, 69, 0.3)', transition: 'all 0.2s ease' }}
                   aria-label="Pass"
-                  disabled
+                  onClick={() => handleSwipe('pass')}
+                  disabled={isSwiping}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="bi bi-x-lg" viewBox="0 0 16 16">
                     <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
@@ -232,10 +364,11 @@ const Swipe = () => {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary-gradient d-flex align-items-center justify-content-center shadow rounded-circle pulse-animation"
-                  style={{ width: '70px', height: '70px' }}
+                  className="btn btn-primary-gradient d-flex align-items-center justify-content-center shadow rounded-circle pulse-animation swipe-btn"
+                  style={{ width: '70px', height: '70px', transition: 'all 0.2s ease' }}
                   aria-label="Like"
-                  disabled
+                  onClick={() => handleSwipe('like')}
+                  disabled={isSwiping}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-heart-fill" viewBox="0 0 16 16">
                     <path fillRule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314"/>
