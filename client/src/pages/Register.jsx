@@ -140,7 +140,8 @@ const Register = () => {
                 <label className="form-label text-secondary fw-semibold small" htmlFor="nameInput">Full Name</label>
                 <input
                   type="text"
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${errors.name ? 'is-invalid border-danger' : ''}`}
+                  className={`form-control border p-3 rounded-3 ${errors.name ? 'is-invalid border-danger' : ''}`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="nameInput"
                   name="name"
                   placeholder="e.g. John Doe"
@@ -156,7 +157,8 @@ const Register = () => {
                 <label className="form-label text-secondary fw-semibold small" htmlFor="emailInput">Email Address</label>
                 <input
                   type="email"
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${errors.email ? 'is-invalid border-danger' : ''}`}
+                  className={`form-control border p-3 rounded-3 ${errors.email ? 'is-invalid border-danger' : ''}`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="emailInput"
                   name="email"
                   placeholder="e.g. developer@example.com"
@@ -172,7 +174,8 @@ const Register = () => {
                 <label className="form-label text-secondary fw-semibold small" htmlFor="passwordInput">Password</label>
                 <input
                   type="password"
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${errors.password ? 'is-invalid border-danger' : ''}`}
+                  className={`form-control border p-3 rounded-3 ${errors.password ? 'is-invalid border-danger' : ''}`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="passwordInput"
                   name="password"
                   placeholder="At least 6 characters"
@@ -188,7 +191,8 @@ const Register = () => {
                 <label className="form-label text-secondary fw-semibold small" htmlFor="confirmPasswordInput">Confirm Password</label>
                 <input
                   type="password"
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${errors.confirmPassword ? 'is-invalid border-danger' : ''}`}
+                  className={`form-control border p-3 rounded-3 ${errors.confirmPassword ? 'is-invalid border-danger' : ''}`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="confirmPasswordInput"
                   name="confirmPassword"
                   placeholder="Repeat your password"

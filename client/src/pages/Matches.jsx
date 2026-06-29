@@ -115,7 +115,7 @@ const Matches = () => {
               <Link to="/" className="btn btn-primary-gradient px-4">
                 Start Swiping
               </Link>
-              <Link to="/profile" className="btn btn-outline-secondary px-4 text-white">
+              <Link to="/profile" className="btn btn-outline-secondary px-4 text-dark">
                 Update Profile
               </Link>
             </div>

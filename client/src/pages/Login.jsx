@@ -112,7 +112,8 @@ const Login = () => {
                 <label className="form-label text-secondary fw-semibold small" htmlFor="loginEmailInput">Email Address</label>
                 <input
                   type="email"
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${errors.email ? 'is-invalid border-danger' : ''}`}
+                  className={`form-control border p-3 rounded-3 ${errors.email ? 'is-invalid border-danger' : ''}`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="loginEmailInput"
                   name="email"
                   placeholder="developer@example.com"
@@ -128,7 +129,8 @@ const Login = () => {
                 <label className="form-label text-secondary fw-semibold small" htmlFor="loginPasswordInput">Password</label>
                 <input
                   type="password"
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${errors.password ? 'is-invalid border-danger' : ''}`}
+                  className={`form-control border p-3 rounded-3 ${errors.password ? 'is-invalid border-danger' : ''}`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="loginPasswordInput"
                   name="password"
                   placeholder="Enter your password"

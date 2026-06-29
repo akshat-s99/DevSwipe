@@ -126,7 +126,7 @@ const Swipe = () => {
             <Link to="/login" className="btn btn-primary-gradient px-4 py-2">
               Login
             </Link>
-            <Link to="/register" className="btn btn-outline-secondary px-4 py-2 text-white">
+            <Link to="/register" className="btn btn-outline-secondary px-4 py-2 text-dark">
               Create Account
             </Link>
           </div>
@@ -183,7 +183,7 @@ const Swipe = () => {
             <Link to="/profile" className="btn btn-primary-gradient px-4">
               Update Profile
             </Link>
-            <button className="btn btn-outline-secondary px-4 text-white" onClick={fetchNextProfile}>
+            <button className="btn btn-outline-secondary px-4 text-dark" onClick={fetchNextProfile}>
               Refresh
             </button>
           </div>
@@ -270,7 +270,7 @@ const Swipe = () => {
               </button>
               <button 
                 type="button" 
-                className="btn btn-outline-secondary py-3 rounded-3 text-white fw-semibold"
+                className="btn btn-outline-secondary py-3 rounded-3 text-dark fw-semibold"
                 onClick={handleCloseMatchModal}
                 style={{ border: '1px solid var(--surface-border)' }}
               >
@@ -289,7 +289,7 @@ const Swipe = () => {
           
           <div className="glass-panel overflow-hidden border-secondary" style={{ borderRadius: '24px' }}>
             
-            <div className="p-4 bg-dark bg-opacity-25 border-bottom border-secondary d-flex justify-content-between align-items-center">
+            <div className="p-4 border-bottom d-flex justify-content-between align-items-center" style={{ background: 'rgba(0,0,0,0.03)', borderColor: 'var(--surface-border)' }}>
               <span className="small text-secondary fw-semibold">DEV MATCHING</span>
               <span className="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-1 small">
                 Active Now
@@ -328,7 +328,7 @@ const Swipe = () => {
 
               <div className="mb-4">
                 <h5 className="text-secondary small fw-bold text-uppercase mb-2">About Me</h5>
-                <p className="text-light leading-relaxed" style={{ fontSize: '1.025rem' }}>
+                <p className="text-dark leading-relaxed" style={{ fontSize: '1.025rem' }}>
                   {profile.bio || "No biography provided. This developer is a code artisan of few words."}
                 </p>
               </div>

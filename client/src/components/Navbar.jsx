@@ -20,7 +20,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary py-3">
+    <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3" style={{ borderColor: 'var(--surface-border) !important' }}>
       <div className="container">
         {/* Brand Logo text with custom swipe gradient */}
         <Link className="navbar-brand fw-bold fs-3 text-transparent bg-clip-text" to="/" style={{
