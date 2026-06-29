@@ -2,6 +2,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const authRoutes = require('./routes/auth');
+const profileRoutes = require('./routes/profile');
+const swipeRoutes = require('./routes/swipe');
+const matchRoutes = require('./routes/match');
+const messageRoutes = require('./routes/message');
+const authMiddleware = require('./middleware/authMiddleware');
 
 dotenv.config();
 
@@ -10,6 +16,13 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', authRoutes);
+app.use('/api/profile', authMiddleware, profileRoutes);
+app.use('/api/swipe', authMiddleware, swipeRoutes);
+app.use('/api/matches', authMiddleware, matchRoutes);
+app.use('/api/messages', authMiddleware, messageRoutes);
+
+
 
 mongoose
 	.connect(process.env.MONGODB_URI)
