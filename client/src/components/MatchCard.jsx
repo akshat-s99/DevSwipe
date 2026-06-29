@@ -23,7 +23,7 @@ const MatchCard = ({ match }) => {
   return (
     <div className="col-12 col-md-6 col-lg-4 mb-4">
       {/* Glassmorphic card styling */}
-      <div className="glass-panel h-100 d-flex flex-column justify-content-between p-4" style={{ borderRadius: '16px' }}>
+      <div className="glass-panel h-100 d-flex flex-column justify-content-between p-4" style={{ borderRadius: '16px', border: '1.5px solid rgba(16, 185, 129, 0.4)' }}>
         
         <div>
           {/* Card Header: Avatar & Name */}

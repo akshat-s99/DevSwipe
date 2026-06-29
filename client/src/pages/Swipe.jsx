@@ -201,14 +201,14 @@ const Swipe = () => {
         <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
           style={{
             zIndex: 1050,
-            backgroundColor: 'rgba(7, 9, 19, 0.95)',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
             backdropFilter: 'blur(10px)',
             transition: 'all 0.5s ease-in-out'
           }}>
           
-          <div className="glass-panel p-5 text-center max-width-match-box" style={{ maxWidth: '480px', border: '1.5px solid rgba(236, 72, 153, 0.3)' }}>
+          <div className="glass-panel p-5 text-center max-width-match-box" style={{ maxWidth: '480px', border: '1.5px solid rgba(16, 185, 129, 0.4)' }}>
             <h1 className="display-5 fw-extrabold text-transparent bg-clip-text mb-2" style={{
-              backgroundImage: 'linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)',
+              backgroundImage: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               fontFamily: 'Outfit'
@@ -235,10 +235,10 @@ const Swipe = () => {
                 <span className="position-absolute bottom-0 end-0 badge bg-primary px-2 py-1 rounded-pill small">YOU</span>
               </div>
 
-              {/* Heart pulse symbol */}
-              <div className="pulse-animation d-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-20 border border-danger text-danger" style={{ width: '50px', height: '50px' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" className="bi bi-heart-fill" viewBox="0 0 16 16">
-                  <path fillRule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314"/>
+              {/* Tick/checkmark pulse symbol */}
+              <div className="pulse-animation d-flex align-items-center justify-content-center rounded-circle" style={{ width: '50px', height: '50px', background: 'rgba(16, 185, 129, 0.15)', border: '2px solid #10b981', color: '#10b981' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" className="bi bi-check-lg" viewBox="0 0 16 16">
+                  <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
                 </svg>
               </div>
 
@@ -248,13 +248,13 @@ const Swipe = () => {
                   style={{
                     width: '90px',
                     height: '90px',
-                    background: 'var(--secondary-gradient)',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     border: '3px solid rgba(255, 255, 255, 0.15)',
                     fontSize: '2rem'
                   }}>
                   {matchDetails.matchedUser.name ? matchDetails.matchedUser.name.charAt(0).toUpperCase() : 'D'}
                 </div>
-                <span className="position-absolute bottom-0 end-0 badge bg-danger px-2 py-1 rounded-pill small">DEV</span>
+                <span className="position-absolute bottom-0 end-0 badge px-2 py-1 rounded-pill small" style={{ background: '#10b981' }}>DEV</span>
               </div>
 
             </div>
@@ -364,14 +364,14 @@ const Swipe = () => {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary-gradient d-flex align-items-center justify-content-center shadow rounded-circle pulse-animation swipe-btn"
-                  style={{ width: '70px', height: '70px', transition: 'all 0.2s ease' }}
+                  className="btn d-flex align-items-center justify-content-center shadow rounded-circle pulse-animation swipe-btn"
+                  style={{ width: '70px', height: '70px', transition: 'all 0.2s ease', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }}
                   aria-label="Like"
                   onClick={() => handleSwipe('like')}
                   disabled={isSwiping}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-heart-fill" viewBox="0 0 16 16">
-                    <path fillRule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314"/>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-check-lg" viewBox="0 0 16 16">
+                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
                   </svg>
                 </button>
               </div>
