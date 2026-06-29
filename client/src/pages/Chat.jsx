@@ -47,15 +47,15 @@ const Chat = () => {
     setError('');
     try {
       const response = await api.get(`/messages/${matchId}`);
-      // The API contract returns: { matchId, messages: [ { messageId, senderId, senderName, content, timestamp } ] }
-      setMessages(response.data.messages || []);
+      // The backend returns an array of messages directly
+      setMessages(response.data || []);
       
       // Attempt to load the matched developer's name from matches dashboard API
       // so we can display their name in the chat header instead of a generic text
       const matchesResponse = await api.get('/matches');
-      const currentMatch = matchesResponse.data.matches?.find(m => m.matchId === matchId);
+      const currentMatch = matchesResponse.data?.find(m => m.matchId === matchId);
       if (currentMatch) {
-        setPartnerName(currentMatch.matchedUser.name);
+        setPartnerName(currentMatch.user.name);
       }
     } catch (err) {
       console.error('Error fetching message history:', err);
@@ -83,7 +83,7 @@ const Chat = () => {
         if (newMessage.matchId === matchId) {
           // Avoid duplicate messages (if we already added it from POST response)
           setMessages((prev) => {
-            const exists = prev.some((m) => m.messageId === newMessage.messageId);
+            const exists = prev.some((m) => m._id === newMessage._id);
             if (exists) return prev;
             return [...prev, newMessage];
           });
@@ -244,7 +244,7 @@ const Chat = () => {
 
                   return (
                     <div
-                      key={msg.messageId || index}
+                      key={msg._id || index}
                       className={`d-flex flex-column ${isOwnMessage ? 'align-items-end' : 'align-items-start'}`}
                     >
                       {/* Message Bubble */}

@@ -22,4 +22,6 @@ const swipeSchema = new mongoose.Schema({
   },
 });
 
+swipeSchema.index({ swiperId: 1, swipedId: 1 }, { unique: true });
+
 module.exports = mongoose.model('Swipe', swipeSchema);

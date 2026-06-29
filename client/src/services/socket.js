@@ -27,7 +27,7 @@ class SocketService {
 
       this.socket.on('connect_error', (error) => {
         console.warn('Socket.io connection error:', error.message);
-        this.socket.disconnect();
+        // Do not call this.socket.disconnect() here, so auto-reconnect can work
       });
 
       this.socket.on('disconnect', (reason) => {
@@ -35,6 +35,13 @@ class SocketService {
       });
     } catch (_) {
       console.warn('WebSocket connection attempt failed.');
+    }
+
+    // Re-attach any registered callbacks to the new socket instance
+    if (this.socket) {
+      this.messageCallbacks.forEach((cb) => {
+        this.socket.on('receive_message', cb);
+      });
     }
 
     return this.socket;

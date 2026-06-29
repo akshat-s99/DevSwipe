@@ -19,13 +19,21 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-      name,
-    });
+    let user;
+    try {
+      user = await User.create({
+        email,
+        password: hashedPassword,
+        name,
+      });
 
-    await Profile.create({ userId: user._id });
+      await Profile.create({ userId: user._id });
+    } catch (dbError) {
+      if (user) {
+        await User.findByIdAndDelete(user._id);
+      }
+      throw dbError;
+    }
 
     const token = jwt.sign(
       { userId: user._id, email: user.email },

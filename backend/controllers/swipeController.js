@@ -43,6 +43,15 @@ const recordSwipe = async (req, res) => {
       return res.status(400).json({ error: 'You cannot swipe on yourself' });
     }
 
+    const existingSwipe = await Swipe.findOne({
+      swiperId: req.user.userId,
+      swipedId,
+    });
+
+    if (existingSwipe) {
+      return res.status(200).json({ message: 'Swipe already recorded' });
+    }
+
     const swipe = await Swipe.create({
       swiperId: req.user.userId,
       swipedId,
