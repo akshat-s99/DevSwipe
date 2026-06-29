@@ -62,7 +62,7 @@ const Swipe = () => {
     try {
       // Send POST swipe action containing target user ID and action
       const response = await api.post('/swipe', {
-        swipedUserId: profile.userId,
+        swipedId: profile.userId._id,
         action
       });
 
