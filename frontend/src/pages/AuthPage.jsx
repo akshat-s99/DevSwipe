@@ -32,24 +32,43 @@ const AuthPage = () => {
     setLoading(true);
 
     try {
+      // Validation
+      if (!formData.email || !formData.password) {
+        throw new Error('Email and password are required');
+      }
+
+      if (!isLogin) {
+        // Registration validation
+        if (!formData.name) {
+          throw new Error('Name is required');
+        }
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+      }
+
       if (isLogin) {
         // Login request
+        console.log('[AuthPage] Attempting login with:', formData.email);
         const response = await axiosInstance.post('/auth/login', {
           email: formData.email,
           password: formData.password
         });
         
         const { token, user } = response.data;
+        console.log('[AuthPage] Login successful:', user);
         login(user, token);
         navigate('/swipe');
       } else {
         // Register request
-        if (formData.password !== formData.confirmPassword) {
-          setError('Passwords do not match');
-          setLoading(false);
-          return;
-        }
-
+        console.log('[AuthPage] Attempting registration with:', {
+          name: formData.name,
+          email: formData.email
+        });
+        
         const response = await axiosInstance.post('/auth/register', {
           name: formData.name,
           email: formData.email,
@@ -57,11 +76,18 @@ const AuthPage = () => {
         });
         
         const { token, user } = response.data;
+        console.log('[AuthPage] Registration successful:', user);
         login(user, token);
         navigate('/swipe');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred. Please try again.');
+      console.error('[AuthPage] Auth error:', err);
+      const errorMessage = 
+        err.response?.data?.error || 
+        err.response?.data?.message || 
+        err.message || 
+        'An error occurred. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

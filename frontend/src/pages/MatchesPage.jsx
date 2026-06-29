@@ -18,10 +18,13 @@ const MatchesPage = () => {
   const fetchMatches = async () => {
     try {
       setLoading(true);
+      console.log('[MatchesPage] Fetching matches');
       const response = await axiosInstance.get('/matches');
+      console.log('[MatchesPage] Matches loaded:', response.data);
       setMatches(response.data);
       setLoading(false);
     } catch (err) {
+      console.error('[MatchesPage] Error loading matches:', err);
       setError('Failed to load matches');
       setLoading(false);
     }
@@ -70,29 +73,32 @@ const MatchesPage = () => {
         ) : (
           <div className="matches-grid">
             {matches.map((match) => (
-              <div key={match._id} className="match-card">
-                {match.profileImage && (
-                  <img
-                    src={match.profileImage}
-                    alt={match.name}
-                    className="match-image"
-                  />
-                )}
+              <div key={match.matchId} className="match-card">
                 <div className="match-details">
-                  <h5>{match.name}</h5>
-                  <p className="text-muted small">{match.bio}</p>
-                  {match.skills && (
+                  <h5>{match.user?.name || 'Unknown Developer'}</h5>
+                  <p className="text-muted small">{match.user?.bio || 'No bio provided'}</p>
+                  {match.user?.githubUrl && (
+                    <p className="small">
+                      <a href={match.user.githubUrl} target="_blank" rel="noopener noreferrer">
+                        GitHub Profile
+                      </a>
+                    </p>
+                  )}
+                  {match.user?.techStack && match.user.techStack.length > 0 && (
                     <div className="skills mb-2">
-                      {match.skills.slice(0, 2).map((skill, idx) => (
+                      {match.user.techStack.slice(0, 3).map((tech, idx) => (
                         <span key={idx} className="badge bg-primary">
-                          {skill}
+                          {tech}
                         </span>
                       ))}
                     </div>
                   )}
+                  <small className="d-block text-muted mb-2">
+                    Matched on {new Date(match.createdAt).toLocaleDateString()}
+                  </small>
                   <button
                     className="btn btn-sm btn-primary w-100"
-                    onClick={() => handleChatClick(match._id)}
+                    onClick={() => handleChatClick(match.matchId)}
                   >
                     Message
                   </button>

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axiosConfig';
-import { io } from 'socket.io-client';
 import '../styles/ChatPage.css';
 
 const ChatPage = () => {
@@ -10,48 +9,44 @@ const ChatPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
-  const [matchUser, setMatchUser] = useState(null);
+  const [matchData, setMatchData] = useState(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const socketRef = useRef(null);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
+  const messageRefreshInterval = useRef(null);
 
-  // Initialize socket connection and fetch data
+  // Fetch messages periodically (polling)
+  const fetchMessages = async () => {
+    try {
+      console.log('[ChatPage] Fetching messages for match:', matchId);
+      const response = await axiosInstance.get(`/messages/${matchId}`);
+      console.log('[ChatPage] Messages loaded:', response.data);
+      setMessages(response.data || []);
+      setError('');
+    } catch (err) {
+      console.error('[ChatPage] Error fetching messages:', err);
+      if (err.response?.status === 404) {
+        setError('Match not found');
+      } else {
+        setError('Failed to load messages');
+      }
+    }
+  };
+
+  // Initialize chat and fetch messages
   useEffect(() => {
     const initializeChat = async () => {
       try {
-        // Fetch match user details and messages
-        const [messagesRes, userRes] = await Promise.all([
-          axiosInstance.get(`/messages/${matchId}`),
-          axiosInstance.get(`/users/${matchId}`)
-        ]);
-
-        setMessages(messagesRes.data);
-        setMatchUser(userRes.data);
-
-        // Connect to socket
-        const token = localStorage.getItem('token');
-        socketRef.current = io('http://localhost:8000', {
-          auth: {
-            token
-          }
-        });
-
-        socketRef.current.on('connect', () => {
-          socketRef.current.emit('joinChat', { matchId });
-        });
-
-        socketRef.current.on('newMessage', (message) => {
-          setMessages(prev => [...prev, message]);
-        });
-
-        socketRef.current.on('error', (err) => {
-          setError('Connection error');
-        });
-
+        setLoading(true);
+        await fetchMessages();
         setLoading(false);
+
+        // Poll for new messages every 2 seconds
+        messageRefreshInterval.current = setInterval(fetchMessages, 2000);
       } catch (err) {
+        console.error('[ChatPage] Error initializing chat:', err);
         setError('Failed to load chat');
         setLoading(false);
       }
@@ -60,8 +55,8 @@ const ChatPage = () => {
     initializeChat();
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      if (messageRefreshInterval.current) {
+        clearInterval(messageRefreshInterval.current);
       }
     };
   }, [matchId]);
@@ -73,22 +68,27 @@ const ChatPage = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || sending) return;
 
     try {
-      await axiosInstance.post('/messages', {
-        recipientId: matchId,
+      setSending(true);
+      console.log('[ChatPage] Sending message:', newMessage);
+      
+      const response = await axiosInstance.post('/messages', {
+        matchId: matchId,
         content: newMessage
       });
 
-      socketRef.current?.emit('sendMessage', {
-        recipientId: matchId,
-        content: newMessage
-      });
-
+      console.log('[ChatPage] Message sent:', response.data);
       setNewMessage('');
+      
+      // Fetch updated messages immediately after sending
+      await fetchMessages();
     } catch (err) {
-      setError('Failed to send message');
+      console.error('[ChatPage] Error sending message:', err);
+      setError(err.response?.data?.error || 'Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -98,8 +98,36 @@ const ChatPage = () => {
   };
 
   if (loading) {
-    return <div className="container mt-5"><p>Loading chat...</p></div>;
+    return (
+      <div className="chat-container">
+        <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <div className="container-fluid">
+            <span className="navbar-brand">Loading chat...</span>
+          </div>
+        </nav>
+        <div className="chat-content">
+          <div className="text-center mt-5">
+            <p>Loading messages...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
+
+  const getUserIdFromToken = () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        return decoded.userId || decoded.id;
+      }
+    } catch (err) {
+      console.error('[ChatPage] Error decoding token:', err);
+    }
+    return user?.id;
+  };
+
+  const currentUserId = getUserIdFromToken();
 
   return (
     <div className="chat-container">
@@ -109,9 +137,9 @@ const ChatPage = () => {
             className="btn btn-outline-secondary btn-sm me-2"
             onClick={() => navigate('/matches')}
           >
-            &larr; Back
+            {'←'} Back
           </button>
-          <span className="navbar-brand">{matchUser?.name || 'Chat'}</span>
+          <span className="navbar-brand">Chat - {matchId}</span>
           <div className="navbar-nav ms-auto">
             <button className="btn btn-danger btn-sm" onClick={handleLogout}>
               Logout
@@ -129,17 +157,17 @@ const ChatPage = () => {
               <p>No messages yet. Say hi!</p>
             </div>
           ) : (
-            messages.map((msg, idx) => (
+            messages.map((msg) => (
               <div
-                key={idx}
+                key={msg._id || msg.timestamp}
                 className={`message ${
-                  msg.senderId === user._id ? 'sent' : 'received'
+                  msg.senderId === currentUserId ? 'sent' : 'received'
                 }`}
               >
                 <div className="message-bubble">
                   <p>{msg.content}</p>
                   <small className="message-time">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
+                    {new Date(msg.timestamp).toLocaleTimeString()}
                   </small>
                 </div>
               </div>
@@ -156,9 +184,14 @@ const ChatPage = () => {
               placeholder="Type a message..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
+              disabled={sending}
             />
-            <button className="btn btn-primary" type="submit">
-              Send
+            <button 
+              className="btn btn-primary" 
+              type="submit"
+              disabled={sending}
+            >
+              {sending ? 'Sending...' : 'Send'}
             </button>
           </div>
         </form>

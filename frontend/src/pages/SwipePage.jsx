@@ -5,54 +5,55 @@ import axiosInstance from '../api/axiosConfig';
 import '../styles/SwipePage.css';
 
 const SwipePage = () => {
-  const [profiles, setProfiles] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProfiles();
+    fetchNextProfile();
   }, []);
 
-  const fetchProfiles = async () => {
+  const fetchNextProfile = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get('/profiles');
-      setProfiles(response.data);
+      setError('');
+      const response = await axiosInstance.get('/swipe/next');
+      console.log('[SwipePage] Fetched next profile:', response.data);
+      setCurrentProfile(response.data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to load profiles');
+      console.error('[SwipePage] Error fetching profile:', err);
+      if (err.response?.status === 404) {
+        setError('No more profiles available');
+      } else {
+        setError('Failed to load profiles');
+      }
       setLoading(false);
     }
   };
 
   const handleSwipe = async (direction) => {
-    if (currentIndex >= profiles.length) return;
+    if (!currentProfile) return;
 
-    const currentProfile = profiles[currentIndex];
-    
     try {
-      if (direction === 'like') {
-        await axiosInstance.post('/swipes', {
-          targetUserId: currentProfile._id,
-          action: 'like'
-        });
-      } else {
-        await axiosInstance.post('/swipes', {
-          targetUserId: currentProfile._id,
-          action: 'pass'
-        });
-      }
-
-      if (currentIndex < profiles.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else {
-        setError('No more profiles to swipe');
-      }
+      setLoading(true);
+      console.log('[SwipePage] Swiping:', direction, 'on profile:', currentProfile._id);
+      
+      const response = await axiosInstance.post('/swipe', {
+        swipedId: currentProfile._id,
+        action: direction
+      });
+      
+      console.log('[SwipePage] Swipe result:', response.data);
+      
+      // Fetch next profile after swiping
+      await fetchNextProfile();
     } catch (err) {
-      setError('Error recording swipe');
+      console.error('[SwipePage] Error swiping:', err);
+      setError(err.response?.data?.error || 'Error recording swipe');
+      setLoading(false);
     }
   };
 
@@ -61,26 +62,66 @@ const SwipePage = () => {
     navigate('/');
   };
 
-  if (loading) {
-    return <div className="container mt-5"><p>Loading profiles...</p></div>;
-  }
-
-  if (error && profiles.length === 0) {
-    return <div className="container mt-5"><p className="text-danger">{error}</p></div>;
-  }
-
-  if (profiles.length === 0 || currentIndex >= profiles.length) {
+  if (loading && !currentProfile) {
     return (
-      <div className="container mt-5">
-        <div className="alert alert-info">
-          <h3>No more profiles available</h3>
-          <p>Come back later to see more matches!</p>
+      <div className="swipe-container">
+        <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <div className="container-fluid">
+            <span className="navbar-brand">DevSwipe</span>
+          </div>
+        </nav>
+        <div className="swipe-content">
+          <div className="text-center mt-5">
+            <p>Loading profiles...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const currentProfile = profiles[currentIndex];
+  if (error && !currentProfile) {
+    return (
+      <div className="swipe-container">
+        <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <div className="container-fluid">
+            <span className="navbar-brand">DevSwipe</span>
+            <div className="navbar-nav ms-auto">
+              <button className="btn btn-danger btn-sm" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </nav>
+        <div className="swipe-content">
+          <div className="alert alert-info mt-5">
+            <h3>{error}</h3>
+            <p>Come back later to see more matches!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProfile) {
+    return (
+      <div className="swipe-container">
+        <nav className="navbar navbar-expand-lg navbar-light bg-light">
+          <div className="container-fluid">
+            <span className="navbar-brand">DevSwipe</span>
+          </div>
+        </nav>
+        <div className="swipe-content">
+          <div className="alert alert-warning mt-5">
+            <h3>No profiles available</h3>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const profileName = currentProfile.userId?.name || 'Unknown';
+  const profileBio = currentProfile.bio || 'No bio provided';
+  const profileTechStack = currentProfile.techStack || [];
 
   return (
     <div className="swipe-container">
@@ -103,21 +144,21 @@ const SwipePage = () => {
 
       <div className="swipe-content">
         <div className="profile-card">
-          {currentProfile.profileImage && (
-            <img
-              src={currentProfile.profileImage}
-              alt={currentProfile.name}
-              className="profile-image"
-            />
-          )}
           <div className="profile-info">
-            <h2>{currentProfile.name}</h2>
-            <p className="text-muted">{currentProfile.bio}</p>
-            {currentProfile.skills && (
+            <h2>{profileName}</h2>
+            <p className="text-muted">{profileBio}</p>
+            {currentProfile.githubUrl && (
+              <p>
+                <a href={currentProfile.githubUrl} target="_blank" rel="noopener noreferrer">
+                  GitHub Profile
+                </a>
+              </p>
+            )}
+            {profileTechStack.length > 0 && (
               <div className="skills">
-                {currentProfile.skills.map((skill, idx) => (
+                {profileTechStack.map((tech, idx) => (
                   <span key={idx} className="badge bg-primary">
-                    {skill}
+                    {tech}
                   </span>
                 ))}
               </div>
@@ -129,24 +170,22 @@ const SwipePage = () => {
           <button
             className="btn btn-lg btn-outline-danger"
             onClick={() => handleSwipe('pass')}
+            disabled={loading}
           >
             Pass
           </button>
           <button
             className="btn btn-lg btn-outline-success"
             onClick={() => handleSwipe('like')}
+            disabled={loading}
           >
             Like
           </button>
         </div>
 
-        {error && currentIndex < profiles.length && (
-          <div className="alert alert-danger mt-3">{error}</div>
+        {error && (
+          <div className="alert alert-warning mt-3">{error}</div>
         )}
-
-        <div className="progress-indicator mt-3">
-          <small>{currentIndex + 1} / {profiles.length}</small>
-        </div>
       </div>
     </div>
   );
