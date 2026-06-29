@@ -6,13 +6,17 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import './styles/index.css';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext';
+import { ErrorProvider } from './context/ErrorContext';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <ErrorProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </ErrorProvider>
   </StrictMode>,
 );
+
 
 

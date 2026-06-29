@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import socketService from '../services/socket';
 
 // Create the Context object to share across the application
 export const AuthContext = createContext(null);
@@ -14,12 +15,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   /**
-   * Reset auth states and remove JWT from local storage.
+   * Reset auth states, remove JWT from local storage, and disconnect WebSockets.
    */
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    socketService.disconnect();
   };
 
   /**
@@ -97,6 +99,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Reactively manage socket connections when token state changes
+  useEffect(() => {
+    if (token) {
+      socketService.connect(token);
+    } else {
+      socketService.disconnect();
+    }
+    // Clean up connection on unmount
+    return () => {
+      socketService.disconnect();
+    };
+  }, [token]);
+
   // Run once on application startup to auto-login if token is present
   useEffect(() => {
     if (token) {
@@ -119,6 +134,7 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener('auth-unauthorized', handleUnauthorized);
     };
   }, []);
+
 
   return (
     <AuthContext.Provider
