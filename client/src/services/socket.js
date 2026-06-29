@@ -20,7 +20,7 @@ class SocketService {
   connect(token) {
     if (this.socket?.connected) return this.socket;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8000';
 
     try {
       this.socket = io(socketUrl, {
