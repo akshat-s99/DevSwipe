@@ -8,6 +8,11 @@ import socketService from '../services/socket';
  * Chat Page Component (Tasks 13.3 & 13.5)
  * Handles individual real-time conversation views between developers.
  * Subscribes to Socket.io events, lists chronological message history, and auto-scrolls to bottom.
+ * 
+ * Updated to use:
+ * - GET /api/messages/:matchId — Fetch message history
+ * - POST /api/messages — Send a message via REST (triggers WebSocket on backend)
+ * - Socket.io receive_message — Real-time incoming messages
  */
 const Chat = () => {
   const { matchId } = useParams();
@@ -65,7 +70,7 @@ const Chat = () => {
     if (user && matchId) {
       fetchMessageHistory();
 
-      // Emit socket event to join the room room matching the conversation matchId
+      // Emit socket event to join the room matching the conversation matchId
       socketService.joinConversation(matchId);
     }
   }, [user, matchId]);
@@ -76,7 +81,12 @@ const Chat = () => {
       const handleNewIncomingMessage = (newMessage) => {
         // Double check that the incoming message belongs to this conversation
         if (newMessage.matchId === matchId) {
-          setMessages((prev) => [...prev, newMessage]);
+          // Avoid duplicate messages (if we already added it from POST response)
+          setMessages((prev) => {
+            const exists = prev.some((m) => m.messageId === newMessage.messageId);
+            if (exists) return prev;
+            return [...prev, newMessage];
+          });
         }
       };
 
@@ -96,19 +106,46 @@ const Chat = () => {
   }, [messages]);
 
   /**
-   * Handles transmitting a message on click / Enter keypress.
+   * Handles transmitting a message via POST /api/messages REST endpoint.
+   * The backend will also emit a WebSocket event to the matched user.
    */
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     const content = messageInput.trim();
 
-    if (!content) return;
+    if (!content || isSending) return;
 
-    // Emit the message over WebSocket
-    socketService.sendMessage(matchId, content);
-    
-    // Clear input field
+    // Validate message length (max 1000 characters per API contract)
+    if (content.length > 1000) {
+      setError('Message cannot exceed 1000 characters.');
+      return;
+    }
+
+    setIsSending(true);
     setMessageInput('');
+
+    try {
+      // POST /api/messages — Send message via REST API
+      const response = await api.post('/messages', {
+        matchId,
+        content
+      });
+
+      // Add the sent message to local state immediately from REST response
+      if (response.data && response.data.messageId) {
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.messageId === response.data.messageId);
+          if (exists) return prev;
+          return [...prev, response.data];
+        });
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      // If REST fails, fall back to WebSocket-only send
+      socketService.sendMessage(matchId, content);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   /**
@@ -146,12 +183,12 @@ const Chat = () => {
         <div className="col-md-10 col-lg-8 col-xl-7">
           
           {/* Chat Panel Box */}
-          <div className="glass-panel d-flex flex-column overflow-hidden border-secondary" style={{ borderRadius: '24px', height: '70vh' }}>
+          <div className="glass-panel d-flex flex-column overflow-hidden" style={{ borderRadius: '24px', height: '70vh', border: '1px solid var(--surface-border)' }}>
             
             {/* Chat Header */}
-            <div className="p-4 bg-dark bg-opacity-25 border-bottom border-secondary d-flex align-items-center justify-content-between">
+            <div className="p-4 border-bottom d-flex align-items-center justify-content-between" style={{ background: 'rgba(0,0,0,0.03)', borderColor: 'var(--surface-border)' }}>
               <div className="d-flex align-items-center">
-                <Link to="/matches" className="btn btn-outline-secondary me-3 px-2 py-1 btn-sm text-white" style={{ border: '1px solid var(--surface-border)' }}>
+                <Link to="/matches" className="btn btn-outline-secondary me-3 px-2 py-1 btn-sm" style={{ border: '1px solid var(--surface-border)' }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-chevron-left" viewBox="0 0 16 16">
                     <path fillRule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
                   </svg>
@@ -160,13 +197,13 @@ const Chat = () => {
                   style={{
                     width: '45px',
                     height: '45px',
-                    background: 'linear-gradient(135deg, #ec4899 0%, #f43f5e 100%)',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     fontSize: '1.15rem'
                   }}>
                   {partnerName ? partnerName.charAt(0).toUpperCase() : 'D'}
                 </div>
                 <div>
-                  <h5 className="fw-bold mb-0 text-white">{partnerName}</h5>
+                  <h5 className="fw-bold mb-0">{partnerName}</h5>
                   <span className="small text-muted d-flex align-items-center">
                     <span className="bg-success rounded-circle me-1" style={{ width: '8px', height: '8px', display: 'inline-block' }}></span>
                     connected
@@ -176,7 +213,7 @@ const Chat = () => {
             </div>
 
             {/* Chat Messages Logs Container */}
-            <div className="flex-grow-1 overflow-auto p-4 d-flex flex-column gap-3 bg-dark bg-opacity-10" style={{ overflowY: 'auto' }}>
+            <div className="flex-grow-1 overflow-auto p-4 d-flex flex-column gap-3" style={{ overflowY: 'auto', background: 'rgba(0,0,0,0.01)' }}>
               {isLoading ? (
                 /* Fetching loading spinner */
                 <div className="text-center my-auto">
@@ -189,7 +226,7 @@ const Chat = () => {
                 /* Connection/Fetch error boundary */
                 <div className="text-center my-auto p-3">
                   <span className="text-danger small fw-semibold d-block mb-3">{error}</span>
-                  <button className="btn btn-outline-secondary btn-sm text-white" onClick={fetchMessageHistory} style={{ border: '1px solid var(--surface-border)' }}>
+                  <button className="btn btn-outline-secondary btn-sm" onClick={fetchMessageHistory} style={{ border: '1px solid var(--surface-border)' }}>
                     Reload History
                   </button>
                 </div>
@@ -212,14 +249,19 @@ const Chat = () => {
                     >
                       {/* Message Bubble */}
                       <div
-                        className={`p-3 max-width-chat-bubble rounded-3 text-white ${
+                        className={`p-3 max-width-chat-bubble rounded-3 ${
                           isOwnMessage
-                            ? 'bg-primary bg-gradient rounded-bottom-end-0'
-                            : 'bg-dark bg-opacity-75 border border-secondary rounded-bottom-start-0'
+                            ? 'text-white rounded-bottom-end-0'
+                            : 'border rounded-bottom-start-0'
                         }`}
                         style={{
                           maxWidth: '75%',
-                          boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+                          background: isOwnMessage
+                            ? 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)'
+                            : '#f3f4f6',
+                          color: isOwnMessage ? '#fff' : 'var(--text-primary)',
+                          borderColor: isOwnMessage ? 'transparent' : 'var(--surface-border)'
                         }}
                       >
                         <span className="d-block leading-relaxed" style={{ fontSize: '0.975rem', wordBreak: 'break-word' }}>
@@ -240,23 +282,29 @@ const Chat = () => {
             </div>
 
             {/* Input Send Message Form panel */}
-            <form onSubmit={handleSendMessage} className="p-3 border-top border-secondary bg-dark bg-opacity-20 d-flex gap-2">
+            <form onSubmit={handleSendMessage} className="p-3 border-top d-flex gap-2" style={{ background: 'rgba(0,0,0,0.02)', borderColor: 'var(--surface-border)' }}>
               <input
                 type="text"
-                className="form-control bg-dark border-secondary text-white py-3 px-4 rounded-3"
+                className="form-control border py-3 px-4 rounded-3"
+                style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                 placeholder="Type your message here..."
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || isSending}
+                maxLength={1000}
               />
               <button
                 type="submit"
                 className="btn btn-primary-gradient px-4 rounded-3 d-flex align-items-center justify-content-center"
-                disabled={isLoading || !messageInput.trim()}
+                disabled={isLoading || isSending || !messageInput.trim()}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" className="bi bi-send-fill" viewBox="0 0 16 16">
-                  <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
-                </svg>
+                {isSending ? (
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" className="bi bi-send-fill" viewBox="0 0 16 16">
+                    <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
+                  </svg>
+                )}
               </button>
             </form>
 

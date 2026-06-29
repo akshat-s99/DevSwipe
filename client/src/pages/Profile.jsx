@@ -7,6 +7,11 @@ import api from '../services/api';
  * Profile Edit/Setup Page Component
  * Allows logged-in developers to manage their profile details:
  * biography, Github URL, and their technical stack tags.
+ * 
+ * Updated to use dedicated API endpoints:
+ * - PUT /api/profile — Update bio and githubUrl
+ * - POST /api/profile/tech — Add a single technology
+ * - DELETE /api/profile/tech/:techName — Remove a single technology
  */
 const Profile = () => {
   // Pull authenticated user, loading status, and user-updater from AuthContext
@@ -25,6 +30,8 @@ const Profile = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: '', message: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [removingTag, setRemovingTag] = useState('');
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
 
   // Redirect to login if user is not authenticated and auth loading completes
@@ -63,9 +70,9 @@ const Profile = () => {
   };
 
   /**
-   * Handles adding a new tag to the local techStack array state.
+   * Handles adding a new tag via POST /api/profile/tech endpoint.
    */
-  const handleAddTag = (e) => {
+  const handleAddTag = async (e) => {
     e.preventDefault();
     const tag = newTagInput.trim();
 
@@ -84,17 +91,61 @@ const Profile = () => {
       return;
     }
 
-    // Append to local tech stack array, clear tag input, and remove errors
-    setTechStack((prev) => [...prev, tag]);
-    setNewTagInput('');
+    setIsAddingTag(true);
     setFieldErrors((prev) => ({ ...prev, techTag: '' }));
+
+    try {
+      // POST /api/profile/tech — Add a single technology to the stack
+      const response = await api.post('/profile/tech', { techName: tag });
+      
+      // Update local state with the returned techStack
+      if (response.data && response.data.techStack) {
+        setTechStack(response.data.techStack);
+      } else {
+        // Fallback: update locally if response doesn't contain techStack
+        setTechStack((prev) => [...prev, tag]);
+      }
+      
+      setNewTagInput('');
+      setFeedback({ type: 'success', message: `Added "${tag}" to your tech stack!` });
+    } catch (error) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        techTag: error.response?.data?.error || 'Failed to add technology. Please try again.'
+      }));
+    } finally {
+      setIsAddingTag(false);
+    }
   };
 
   /**
-   * Remove a technology tag from the local techStack array state.
+   * Remove a technology tag via DELETE /api/profile/tech/:techName endpoint.
    */
-  const handleRemoveTag = (tagToRemove) => {
-    setTechStack((prev) => prev.filter((t) => t !== tagToRemove));
+  const handleRemoveTag = async (tagToRemove) => {
+    setRemovingTag(tagToRemove);
+    
+    try {
+      // DELETE /api/profile/tech/:techName — Remove a single technology
+      const encodedTech = encodeURIComponent(tagToRemove);
+      const response = await api.delete(`/profile/tech/${encodedTech}`);
+      
+      // Update local state with the returned techStack
+      if (response.data && response.data.techStack) {
+        setTechStack(response.data.techStack);
+      } else {
+        // Fallback: update locally
+        setTechStack((prev) => prev.filter((t) => t !== tagToRemove));
+      }
+      
+      setFeedback({ type: 'success', message: `Removed "${tagToRemove}" from your tech stack.` });
+    } catch (error) {
+      setFeedback({
+        type: 'danger',
+        message: error.response?.data?.error || 'Failed to remove technology. Please try again.'
+      });
+    } finally {
+      setRemovingTag('');
+    }
   };
 
   /**
@@ -129,6 +180,7 @@ const Profile = () => {
 
   /**
    * Submits form payload to PUT /api/profile endpoint.
+   * Now sends bio, githubUrl, and techStack together.
    * Manages status banners and updates context states on success.
    */
   const handleSaveProfile = async (e) => {
@@ -186,7 +238,7 @@ const Profile = () => {
       <div className="row justify-content-center">
         <div className="col-md-9 col-lg-8">
           <div className="glass-panel p-4 p-md-5">
-            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom border-secondary pb-3">
+            <div className="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3" style={{ borderColor: 'var(--surface-border)' }}>
               <div>
                 <h2 className="fw-bold mb-1">Developer Profile</h2>
                 <p className="text-muted mb-0">Configure your portfolio details for matching</p>
@@ -217,16 +269,17 @@ const Profile = () => {
                   GitHub Profile URL
                 </label>
                 <div className="input-group">
-                  <span className="input-group-text bg-dark border-secondary text-secondary">
+                  <span className="input-group-text border" style={{ background: 'var(--card-bg)', borderColor: 'var(--surface-border)', color: 'var(--text-secondary)' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-github" viewBox="0 0 16 16">
                       <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/>
                     </svg>
                   </span>
                   <input
                     type="url"
-                    className={`form-control bg-dark border-secondary text-white p-3 ${
+                    className={`form-control border p-3 ${
                       fieldErrors.githubUrl ? 'is-invalid border-danger' : ''
                     }`}
+                    style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                     id="githubInput"
                     name="githubUrl"
                     placeholder="https://github.com/yourusername"
@@ -254,9 +307,10 @@ const Profile = () => {
                   </span>
                 </div>
                 <textarea
-                  className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${
+                  className={`form-control border p-3 rounded-3 ${
                     fieldErrors.bio ? 'is-invalid border-danger' : ''
                   }`}
+                  style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                   id="bioInput"
                   name="bio"
                   rows="4"
@@ -275,7 +329,7 @@ const Profile = () => {
                 </label>
 
                 {/* Tech Badges Container */}
-                <div className="p-3 bg-dark bg-opacity-50 border border-secondary rounded-3 mb-3 d-flex flex-wrap align-items-center min-height-tag-box" style={{ minHeight: '60px' }}>
+                <div className="p-3 border rounded-3 mb-3 d-flex flex-wrap align-items-center min-height-tag-box" style={{ minHeight: '60px', background: 'rgba(0,0,0,0.02)', borderColor: 'var(--surface-border)' }}>
                   {techStack.length === 0 ? (
                     <span className="text-muted small px-1">No technology tags added yet. Add some below!</span>
                   ) : (
@@ -284,11 +338,11 @@ const Profile = () => {
                         {tag}
                         <button
                           type="button"
-                          className="btn-close btn-close-white ms-2"
-                          style={{ fontSize: '0.65rem', padding: '0.1rem' }}
+                          className="btn-close ms-2"
+                          style={{ fontSize: '0.65rem', padding: '0.1rem', filter: 'none', opacity: removingTag === tag ? 0.3 : 0.6 }}
                           aria-label={`Remove ${tag}`}
                           onClick={() => handleRemoveTag(tag)}
-                          disabled={isSaving}
+                          disabled={isSaving || removingTag === tag}
                         ></button>
                       </span>
                     ))
@@ -300,9 +354,10 @@ const Profile = () => {
                   <div className="col">
                     <input
                       type="text"
-                      className={`form-control bg-dark border-secondary text-white p-3 rounded-3 ${
+                      className={`form-control border p-3 rounded-3 ${
                         fieldErrors.techTag ? 'is-invalid border-danger' : ''
                       }`}
+                      style={{ background: '#fff', borderColor: 'var(--surface-border)', color: 'var(--text-primary)' }}
                       placeholder="e.g. React, Node.js, Express, Docker"
                       value={newTagInput}
                       onChange={(e) => {
@@ -314,7 +369,7 @@ const Profile = () => {
                           handleAddTag(e);
                         }
                       }}
-                      disabled={isSaving}
+                      disabled={isSaving || isAddingTag}
                     />
                     {fieldErrors.techTag && (
                       <div className="invalid-feedback fw-semibold mt-1">{fieldErrors.techTag}</div>
@@ -323,12 +378,16 @@ const Profile = () => {
                   <div className="col-auto">
                     <button
                       type="button"
-                      className="btn btn-outline-secondary p-3 rounded-3 fw-semibold text-white h-100"
+                      className="btn btn-outline-secondary p-3 rounded-3 fw-semibold h-100"
                       onClick={handleAddTag}
-                      disabled={isSaving}
+                      disabled={isSaving || isAddingTag}
                       style={{ border: '1px solid var(--surface-border)' }}
                     >
-                      Add Tag
+                      {isAddingTag ? (
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      ) : (
+                        'Add Tag'
+                      )}
                     </button>
                   </div>
                 </div>

@@ -68,9 +68,36 @@ api.interceptors.response.use(
         });
       }
 
-      // 2. Mock Profile GET / PUT
-      if (url.includes('/profile')) {
+      // 2. Mock Profile GET / PUT / POST tech / DELETE tech
+      if (url.includes('/profile/tech')) {
+        // POST /api/profile/tech — Add a single technology
+        if (method === 'post') {
+          try {
+            const payload = JSON.parse(config.data);
+            const mockStack = JSON.parse(localStorage.getItem('mockTechStack') || '["React","Node.js","Express","MongoDB","Bootstrap 5"]');
+            if (payload.techName && !mockStack.includes(payload.techName)) {
+              mockStack.push(payload.techName);
+              localStorage.setItem('mockTechStack', JSON.stringify(mockStack));
+            }
+            return Promise.resolve({ data: { techStack: mockStack } });
+          } catch (_) {
+            return Promise.reject(error);
+          }
+        }
+        
+        // DELETE /api/profile/tech/:techName — Remove a single technology
+        if (method === 'delete') {
+          const techName = decodeURIComponent(url.split('/profile/tech/')[1] || '');
+          const mockStack = JSON.parse(localStorage.getItem('mockTechStack') || '["React","Node.js","Express","MongoDB","Bootstrap 5"]');
+          const filtered = mockStack.filter((t) => t !== techName);
+          localStorage.setItem('mockTechStack', JSON.stringify(filtered));
+          return Promise.resolve({ data: { techStack: filtered } });
+        }
+      }
+
+      if (url.includes('/profile') && !url.includes('/profile/tech')) {
         if (method === 'get') {
+          const mockStack = JSON.parse(localStorage.getItem('mockTechStack') || '["React","Node.js","Express","MongoDB","Bootstrap 5"]');
           return Promise.resolve({
             data: {
               userId: 'mock-user-john',
@@ -78,7 +105,7 @@ api.interceptors.response.use(
               email: 'developer@example.com',
               bio: 'Full-stack developer passionate about React and Node.js. Love clean code and interactive UIs.',
               githubUrl: 'https://github.com/johndoe',
-              techStack: ['React', 'Node.js', 'Express', 'MongoDB', 'Bootstrap 5']
+              techStack: mockStack
             }
           });
         }
@@ -86,6 +113,9 @@ api.interceptors.response.use(
         if (method === 'put') {
           try {
             const payload = JSON.parse(config.data);
+            if (payload.techStack) {
+              localStorage.setItem('mockTechStack', JSON.stringify(payload.techStack));
+            }
             return Promise.resolve({
               data: {
                 userId: 'mock-user-john',
@@ -207,8 +237,28 @@ api.interceptors.response.use(
         });
       }
 
-      // 6. Mock Messages Logs history
-      if (url.includes('/messages/')) {
+      // 6. Mock Messages — POST /api/messages (send a message via REST)
+      if (url === '/messages' && method === 'post') {
+        try {
+          const payload = JSON.parse(config.data);
+          return Promise.resolve({
+            data: {
+              messageId: `msg-${Date.now()}`,
+              matchId: payload.matchId,
+              senderId: 'mock-user-john',
+              senderName: 'John Doe',
+              content: payload.content,
+              timestamp: new Date().toISOString(),
+              read: false
+            }
+          });
+        } catch (_) {
+          return Promise.reject(error);
+        }
+      }
+
+      // 7. Mock Messages — GET /api/messages/:matchId (fetch history)
+      if (url.includes('/messages/') && method === 'get') {
         const id = url.split('/messages/')[1];
         const partner = id.includes('jane') ? 'Jane Smith' : 'Alex Johnson';
         return Promise.resolve({
