@@ -82,11 +82,27 @@ const AuthPage = () => {
       }
     } catch (err) {
       console.error('[AuthPage] Auth error:', err);
-      const errorMessage = 
-        err.response?.data?.error || 
-        err.response?.data?.message || 
-        err.message || 
-        'An error occurred. Please try again.';
+      
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      // Check if it's a network error (backend not running)
+      if (!err.response) {
+        errorMessage = 'Cannot connect to server. Is the backend running on port 5000?';
+      } else if (err.response?.status === 404) {
+        errorMessage = 'This endpoint doesn\'t exist. Backend may not be configured properly.';
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response?.data?.error || err.response?.data?.message || 'Invalid input. Please check your data.';
+      } else if (err.response?.status === 409) {
+        errorMessage = 'Email already exists. Please login or use a different email.';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Invalid email or password.';
+      } else {
+        errorMessage = 
+          err.response?.data?.error || 
+          err.response?.data?.message || 
+          err.message;
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);
