@@ -44,7 +44,13 @@ const Swipe = () => {
       }
     } catch (err) {
       console.error('Error fetching next profile:', err);
-      setError(err.response?.data?.error || 'Failed to load profiles. Please try again.');
+      if (err.response && err.response.status === 404) {
+        // 404 means no more profiles left
+        setProfile(null);
+        setNoMoreProfiles(true);
+      } else {
+        setError(err.response?.data?.error || 'Failed to load profiles. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
