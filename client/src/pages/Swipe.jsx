@@ -264,7 +264,7 @@ const Swipe = () => {
               <button 
                 type="button" 
                 className="btn btn-secondary-gradient py-3 rounded-3 fw-bold"
-                onClick={() => navigate('/messages')}
+                onClick={() => navigate(`/chat/${matchDetails.matchId}`)}
               >
                 Send Message
               </button>
