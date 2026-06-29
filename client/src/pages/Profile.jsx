@@ -94,28 +94,11 @@ const Profile = () => {
     setIsAddingTag(true);
     setFieldErrors((prev) => ({ ...prev, techTag: '' }));
 
-    try {
-      // POST /api/profile/tech — Add a single technology to the stack
-      const response = await api.post('/profile/tech', { techName: tag });
-      
-      // Update local state with the returned techStack
-      if (response.data && response.data.techStack) {
-        setTechStack(response.data.techStack);
-      } else {
-        // Fallback: update locally if response doesn't contain techStack
-        setTechStack((prev) => [...prev, tag]);
-      }
-      
-      setNewTagInput('');
-      setFeedback({ type: 'success', message: `Added "${tag}" to your tech stack!` });
-    } catch (error) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        techTag: error.response?.data?.error || 'Failed to add technology. Please try again.'
-      }));
-    } finally {
-      setIsAddingTag(false);
-    }
+    // Local state update only (saved to backend on Save Profile)
+    setTechStack((prev) => [...prev, tag]);
+    setNewTagInput('');
+    setFeedback({ type: 'success', message: `Added "${tag}" to your tech stack!` });
+    setIsAddingTag(false);
   };
 
   /**
@@ -124,28 +107,11 @@ const Profile = () => {
   const handleRemoveTag = async (tagToRemove) => {
     setRemovingTag(tagToRemove);
     
-    try {
-      // DELETE /api/profile/tech/:techName — Remove a single technology
-      const encodedTech = encodeURIComponent(tagToRemove);
-      const response = await api.delete(`/profile/tech/${encodedTech}`);
-      
-      // Update local state with the returned techStack
-      if (response.data && response.data.techStack) {
-        setTechStack(response.data.techStack);
-      } else {
-        // Fallback: update locally
-        setTechStack((prev) => prev.filter((t) => t !== tagToRemove));
-      }
-      
-      setFeedback({ type: 'success', message: `Removed "${tagToRemove}" from your tech stack.` });
-    } catch (error) {
-      setFeedback({
-        type: 'danger',
-        message: error.response?.data?.error || 'Failed to remove technology. Please try again.'
-      });
-    } finally {
-      setRemovingTag('');
-    }
+    // Local state update only (saved to backend on Save Profile)
+    setTechStack((prev) => prev.filter((t) => t !== tagToRemove));
+    setFeedback({ type: 'success', message: `Removed "${tagToRemove}" from your tech stack.` });
+    
+    setRemovingTag('');
   };
 
   /**
