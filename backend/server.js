@@ -1,3 +1,7 @@
+// Force Node.js to use Google DNS to bypass local DNS failures for MongoDB Atlas SRV lookups
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -37,14 +41,25 @@ app.use('/api/messages', authMiddleware, messageRoutes);
 
 
 
-mongoose
-	.connect(process.env.MONGODB_URI)
-	.then(() => {
-		console.log('MongoDB Connected');
-	})
-	.catch((error) => {
-		console.error('MongoDB connection error:', error);
-	});
+// MongoDB connection with retry logic for transient DNS/network failures
+const connectWithRetry = async (retries = 5, delay = 3000) => {
+	for (let i = 1; i <= retries; i++) {
+		try {
+			await mongoose.connect(process.env.MONGODB_URI);
+			console.log('MongoDB Connected');
+			return;
+		} catch (error) {
+			console.error(`MongoDB connection attempt ${i}/${retries} failed:`, error.message);
+			if (i < retries) {
+				console.log(`Retrying in ${delay / 1000}s...`);
+				await new Promise(resolve => setTimeout(resolve, delay));
+			} else {
+				console.error('All MongoDB connection attempts failed. Server will continue but DB operations will fail.');
+			}
+		}
+	}
+};
+connectWithRetry();
 
 // Setup Socket.io connection handling
 io.on('connection', (socket) => {
